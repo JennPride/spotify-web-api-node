@@ -33,7 +33,12 @@ var _getErrorObject = function(defaultMessage, err) {
   var errorObject;
   if (typeof err.error === 'object' && typeof err.error.message === 'string') {
     // Web API Error format
-    errorObject = new WebApiError(err.error.message, err.error.status);
+    const { retryAfter = null } = err.error;
+    errorObject = new WebApiError(
+      err.error.message,
+      err.error.status,
+      retryAfter
+    );
   } else if (typeof err.error === 'string') {
     // Authorization Error format
     /* jshint ignore:start */
@@ -84,6 +89,9 @@ HttpManager._makeRequest = function(method, options, uri, callback) {
 
   req.end(function(err, response) {
     if (err) {
+      if (err.status === 429) {
+        err.retryAfter = response.headers['retry-after'];
+      }
       var errorObject = _getErrorObject('Request error', {
         error: err
       });
